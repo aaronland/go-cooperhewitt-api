@@ -1,11 +1,32 @@
 package shoebox
 
+/*
+
+2017/04/08 14:03:56 https://images.collection.cooperhewitt.org/203657_975bbafe4acc0c76_d.gif /Users/asc/shoebox/cooperhewitt-2/112/788/119/203657_975bbafe4acc0c76_d.gif <nil>
+2017/04/08 14:03:57 Archived  112788117
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x20 pc=0x1210502]
+
+goroutine 625 [running]:
+github.com/thisisaaronland/go-cooperhewitt-api/client.(*HTTPClient).ExecuteMethod(0xc420018d20, 0x12a424f, 0x1c, 0xc4204dc0f0, 0x0, 0x0, 0x0, 0x0)
+												/Users/asc/cooperhewitt/go-cooperhewitt-api/src/github.com/thisisaaronland/go-cooperhewitt-api/client/http.go:58 +0x1e2
+												github.com/thisisaaronland/go-cooperhewitt-api/shoebox.(*Shoebox).ArchiveItemObject(0xc420017150, 0x7fff5fbffbaf, 0x21, 0xc42028c780, 0x0, 0x0)
+																								  /Users/asc/cooperhewitt/go-cooperhewitt-api/src/github.com/thisisaaronland/go-cooperhewitt-api/shoebox/shoebox.go:278 +0x1d0
+																								  github.com/thisisaaronland/go-cooperhewitt-api/shoebox.(*Shoebox).ArchiveItem.func2(0xc4201da4e0, 0xc420017150, 0x7fff5fbffbaf, 0x21, 0xc42028c780)
+																								  												    /Users/asc/cooperhewitt/go-cooperhewitt-api/src/github.com/thisisaaronland/go-cooperhewitt-api/shoebox/shoebox.go:214 +0x77
+																																				    created by github.com/thisisaaronland/go-cooperhewitt-api/shoebox.(*Shoebox).ArchiveItem
+																																				    	    /Users/asc/cooperhewitt/go-cooperhewitt-api/src/github.com/thisisaaronland/go-cooperhewitt-api/shoebox/shoebox.go:219 +0xfc
+
+
+*/
+
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/thisisaaronland/go-cooperhewitt-api"
 	"github.com/thisisaaronland/go-cooperhewitt-api/util"
+	"github.com/tidwall/gjson"
 	"io/ioutil"
 	"log"
 	"net/url"
@@ -154,15 +175,22 @@ func (sb *Shoebox) Archive(dest string) error {
 		return err
 	}
 
-	wg := new(sync.WaitGroup)
+	max := 4
+	throttle := make(chan bool, max)
+
+	for i := 0; i < max; i++ {
+		throttle <- true
+	}
 
 	for _, i := range items.Items {
 
-		wg.Add(1)
+		<-throttle
 
-		go func(i *ShoeboxItem, wg *sync.WaitGroup) {
+		go func(i *ShoeboxItem, throttle chan bool) {
 
-			defer wg.Done()
+			defer func() {
+				throttle <- true
+			}()
 
 			err := sb.ArchiveItem(dest, i)
 
@@ -170,10 +198,12 @@ func (sb *Shoebox) Archive(dest string) error {
 				log.Println(err)
 			}
 
-		}(i, wg)
+		}(i, throttle)
+
 	}
 
-	wg.Wait()
+	// TO DO
+	// generate HTML indexes
 
 	return nil
 }
@@ -181,9 +211,42 @@ func (sb *Shoebox) Archive(dest string) error {
 func (sb *Shoebox) ArchiveItem(root string, item *ShoeboxItem) error {
 
 	// TO DO
-	// fetch object info
-	// fetch images (videos, etc)
 	// generate HTML
+
+	wg := new(sync.WaitGroup)
+	wg.Add(2)
+
+	go func() {
+
+		defer wg.Done()
+
+		err := sb.ArchiveItemMetadata(root, item)
+
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+
+	go func() {
+
+		defer wg.Done()
+
+		err := sb.ArchiveItemObject(root, item)
+
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+
+	wg.Wait()
+
+	id := item.Id
+	log.Println("Archived ", id)
+
+	return nil
+}
+
+func (sb *Shoebox) ArchiveItemMetadata(root string, item *ShoeboxItem) error {
 
 	body, err := json.Marshal(item)
 
@@ -217,6 +280,121 @@ func (sb *Shoebox) ArchiveItem(root string, item *ShoeboxItem) error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (sb *Shoebox) ArchiveItemObject(root string, item *ShoeboxItem) error {
+
+	item_id := item.Id
+	object_id := item.RefersToUid
+
+	method := "cooperhewitt.objects.getInfo"
+	args := url.Values{}
+
+	str_id := strconv.FormatInt(object_id, 10)
+	args.Set("object_id", str_id)
+
+	rsp, err := sb.client.ExecuteMethod(method, &args)
+
+	if err != nil {
+		return err
+	}
+
+	rel_path := util.Id2Path(item_id)
+	root_path := filepath.Join(root, rel_path)
+
+	_, err = os.Stat(root_path)
+
+	if os.IsNotExist(err) {
+
+		err = os.MkdirAll(root_path, 0755)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	body := rsp.Raw()
+
+	err = sb.ArchiveItemObjectMetadata(root, item, body)
+
+	if err != nil {
+		return err
+	}
+
+	err = sb.ArchiveItemObjectImages(root, item, body)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (sb *Shoebox) ArchiveItemObjectMetadata(root string, item *ShoeboxItem, object []byte) error {
+
+	item_id := item.Id
+	object_id := item.RefersToUid
+
+	path := util.Id2Path(item_id)
+	fname := fmt.Sprintf("%d.json", object_id)
+
+	rel_path := filepath.Join(path, fname)
+	abs_path := filepath.Join(root, rel_path)
+
+	err := ioutil.WriteFile(abs_path, object, 0644)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (sb *Shoebox) ArchiveItemObjectImages(root string, item *ShoeboxItem, object []byte) error {
+
+	item_id := item.Id
+	path := util.Id2Path(item_id)
+
+	rel_path := filepath.Join(root, path)
+
+	images := gjson.GetBytes(object, "object.images")
+
+	wg := new(sync.WaitGroup)
+
+	for _, img := range images.Array() {
+
+		for _, details := range img.Map() {
+
+			url := details.Get("url")
+
+			remote := url.String()
+			fname := filepath.Base(remote)
+
+			local := filepath.Join(rel_path, fname)
+
+			_, err := os.Stat(local)
+
+			if os.IsExist(err) {
+				continue
+			}
+
+			wg.Add(1)
+
+			go func(remote string, local string, wg *sync.WaitGroup) {
+
+				defer wg.Done()
+
+				err := util.GetStore(remote, local)
+				log.Println(remote, local, err)
+
+			}(remote, local, wg)
+
+		}
+	}
+
+	wg.Wait()
 
 	return nil
 }

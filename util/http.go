@@ -8,6 +8,30 @@ import (
 	"net/http"
 )
 
+func GetStore(remote string, local string) error {
+
+	rsp, err := http.Get(remote)
+
+	if err != nil {
+		return err
+	}
+
+	contents, err := ioutil.ReadAll(rsp.Body)
+
+	if err != nil {
+		return err
+	}
+
+	rsp.Body.Close()
+	err = ioutil.WriteFile(local, contents, 0644)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func HTTPResponseToReader(http_rsp *http.Response) (io.Reader, error) {
 
 	var body io.Reader

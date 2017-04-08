@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/thisisaaronland/go-cooperhewitt-api"
-	"github.com/thisisaaronland/go-cooperhewitt-api/response"	
+	"github.com/thisisaaronland/go-cooperhewitt-api/response"
 	_ "log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -31,7 +32,7 @@ func NewHTTPClient(endpoint api.APIEndpoint) (*HTTPClient, error) {
 		http_client: http_client,
 	}
 
-return &cl, nil
+	return &cl, nil
 }
 
 func (client *HTTPClient) DefaultArgs() *url.Values {
@@ -104,12 +105,14 @@ func (client *HTTPClient) ExecuteMethodWithCallback(method string, params *url.V
 	return callback(rsp)
 }
 
-/*
 func (client *HTTPClient) ExecuteMethodPaginated(method string, params *url.Values, callback api.APIResponseCallback) error {
 
-	api_key := params.Get("api_key") // PLEASE MAKE ME GENERIC AND INTERFACE-Y
+	pages := -1
+	page := 1 // check params.Get("page") here...
 
-	for {
+	for pages == -1 || pages >= page {
+
+		params.Set("page", strconv.Itoa(page))
 
 		rsp, err := client.ExecuteMethod(method, params)
 
@@ -123,13 +126,16 @@ func (client *HTTPClient) ExecuteMethodPaginated(method string, params *url.Valu
 			return errors.New(api_err.String())
 		}
 
-		pg, err := rsp.Pagination()
+		if pages == -1 {
 
-		if err != nil {
-			return err
+			pg, err := rsp.Pagination()
+
+			if err != nil {
+				return err
+			}
+
+			pages = pg.Pages()
 		}
-
-		next_query := pg.NextQuery()
 
 		cb_err := callback(rsp)
 
@@ -137,29 +143,11 @@ func (client *HTTPClient) ExecuteMethodPaginated(method string, params *url.Valu
 			return cb_err
 		}
 
-		if next_query == "null" || next_query == "" {
-			break
-		}
-
-		parsed, err := url.ParseQuery(next_query)
-
-		if err != nil {
-			return err
-		}
-
-		parsed.Set("api_key", api_key) // SEE ABOVE ABOUT GENERIC AND INTERFACE-Y
-
-		params = &parsed
-
-		// to do: add proper QPS throttling here
-
-		time.Sleep(200 * time.Millisecond)
+		page += 1
 	}
 
 	return nil
 }
-
-*/
 
 func IsHTTPError(status_code int) bool {
 	return (status_code > 400 && status_code <= 599)

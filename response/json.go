@@ -4,18 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"github.com/thisisaaronland/go-cooperhewitt-api"
-	"github.com/thisisaaronland/go-cooperhewitt-api/util"	
+	"github.com/thisisaaronland/go-cooperhewitt-api/util"
+	"github.com/tidwall/gjson"
 	_ "log"
 	"net/http"
 )
 
 type JSONPagination struct {
-	page       int
-	pages      int
-	per_page   int
-	total      int
+	page     int
+	pages    int
+	per_page int
+	total    int
 }
 
 func (p JSONPagination) Page() int {
@@ -33,7 +33,6 @@ func (p JSONPagination) PerPage() int {
 func (p JSONPagination) Total() int {
 	return p.total
 }
-
 
 func (p JSONPagination) String() string {
 	return "FIX ME"
@@ -110,10 +109,10 @@ func (rsp JSONResponse) Pagination() (api.APIPagination, error) {
 	total := rsp.get("total")
 
 	pg := JSONPagination{
-		page:       int(page.Int()),
-		pages:      int(pages.Int()),
-		per_page:   int(per_page.Int()),
-		total:      int(total.Int()),
+		page:     int(page.Int()),
+		pages:    int(pages.Int()),
+		per_page: int(per_page.Int()),
+		total:    int(total.Int()),
 	}
 
 	return &pg, nil

@@ -14,6 +14,8 @@ self:   prep
 	cp endpoint/*.go src/github.com/thisisaaronland/go-cooperhewitt-api/endpoint/
 	mkdir -p src/github.com/thisisaaronland/go-cooperhewitt-api/response
 	cp response/*.go src/github.com/thisisaaronland/go-cooperhewitt-api/response/
+	mkdir -p src/github.com/thisisaaronland/go-cooperhewitt-api/shoebox
+	cp shoebox/*.go src/github.com/thisisaaronland/go-cooperhewitt-api/shoebox/
 	mkdir -p src/github.com/thisisaaronland/go-cooperhewitt-api/util
 	cp util/*.go src/github.com/thisisaaronland/go-cooperhewitt-api/util/
 	cp api.go src/github.com/thisisaaronland/go-cooperhewitt-api/
@@ -39,7 +41,9 @@ fmt:
 	go fmt cmd/*.go
 	go fmt endpoint/*.go
 	go fmt response/*.go
+	go fmt shoebox/*.go
 	go fmt util/*.go
 
 bin:	self
 	@GOPATH=$(shell pwd) go build -o bin/ch-api cmd/ch-api.go
+	@GOPATH=$(shell pwd) go build -o bin/ch-shoebox-archive cmd/ch-shoebox-archive.go

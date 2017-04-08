@@ -51,12 +51,12 @@ func main() {
 
 	c, _ := client.NewHTTPClient(e)
 
-		dest := os.Stdout
+	dest := os.Stdout
 
-		cb := func(rsp api.APIResponse) error {
-			_, err = dest.Write(rsp.Raw())
-			return err
-		}
+	cb := func(rsp api.APIResponse) error {
+		_, err = dest.Write(rsp.Raw())
+		return err
+	}
 
 	err = c.ExecuteMethodWithCallback(method, args, cb)
 

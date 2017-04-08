@@ -15,6 +15,8 @@ type APIEndpoint interface {
 
 type APIClient interface {
 	ExecuteMethod(string, *url.Values) (APIResponse, error)
+	ExecuteMethodWithCallback(string, *url.Values, APIResponseCallback) error
+	ExecuteMethodPaginated(string, *url.Values, APIResponseCallback) error
 	DefaultArgs() *url.Values
 }
 

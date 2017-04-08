@@ -3,6 +3,7 @@ package endpoint
 import (
 	"fmt"
 	"github.com/thisisaaronland/go-cooperhewitt-api"
+	_ "log"
 	"net/http"
 	"net/url"
 )

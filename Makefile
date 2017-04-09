@@ -27,6 +27,7 @@ rmdeps:
 
 deps:   
 	@GOPATH=$(GOPATH) go get -u "github.com/tidwall/gjson"
+	@GOPATH=$(GOPATH) go get -u "github.com/tidwall/pretty"
 
 vendor-deps: rmdeps deps
 	if test ! -d vendor; then mkdir vendor; fi

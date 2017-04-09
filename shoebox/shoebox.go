@@ -6,6 +6,7 @@ import (
 	"github.com/thisisaaronland/go-cooperhewitt-api"
 	"github.com/thisisaaronland/go-cooperhewitt-api/util"
 	"github.com/tidwall/gjson"
+	"github.com/tidwall/pretty"
 	"io/ioutil"
 	"log"
 	"net/url"
@@ -41,22 +42,43 @@ func (sb *Shoebox) Archive(dest string) error {
 		return errors.New("Not a directory")
 	}
 
+	max := 2
+	throttle := make(chan bool, max)
+
+	for i := 0; i < max; i++ {
+		throttle <- true
+	}
+
 	method := "cooperhewitt.shoebox.items.getList"
 
 	cb := func(rsp api.APIResponse) error {
 
 		items := gjson.GetBytes(rsp.Raw(), "items")
+		wg := new(sync.WaitGroup)
 
 		for _, i := range items.Array() {
 
-			b := []byte(i.Raw)
-			err := sb.ArchiveItem(dest, b)
+			<-throttle
 
-			if err != nil {
-				return err
-			}
+			item := []byte(i.Raw)
+			wg.Add(1)
+
+			go func(item []byte, wg *sync.WaitGroup, throttle chan bool) {
+
+				err := sb.ArchiveItem(dest, item)
+
+				if err != nil {
+					log.Println(err)
+				}
+
+				throttle <- true
+				wg.Done()
+
+			}(item, wg, throttle)
+
 		}
 
+		wg.Wait()
 		return nil
 	}
 
@@ -91,9 +113,6 @@ func (sb *Shoebox) ArchiveItem(root string, item []byte) error {
 		}
 	}
 
-	// TO DO
-	// generate HTML
-
 	err = sb.ArchiveItemMetadata(root, item)
 
 	if err != nil {
@@ -105,6 +124,9 @@ func (sb *Shoebox) ArchiveItem(root string, item []byte) error {
 	if err != nil {
 		return err
 	}
+
+	// TO DO
+	// generate HTML
 
 	return nil
 }
@@ -119,7 +141,8 @@ func (sb *Shoebox) ArchiveItemMetadata(root string, item []byte) error {
 	rel_path := filepath.Join(path, fname)
 	abs_path := filepath.Join(root, rel_path)
 
-	err := ioutil.WriteFile(abs_path, item, 0644)
+	item_fmt := pretty.Pretty(item)
+	err := ioutil.WriteFile(abs_path, item_fmt, 0644)
 
 	if err != nil {
 		return err
@@ -173,7 +196,8 @@ func (sb *Shoebox) ArchiveItemObjectMetadata(root string, item []byte, object []
 	rel_path := filepath.Join(path, fname)
 	abs_path := filepath.Join(root, rel_path)
 
-	err := ioutil.WriteFile(abs_path, object, 0644)
+	object_fmt := pretty.Pretty(object)
+	err := ioutil.WriteFile(abs_path, object_fmt, 0644)
 
 	if err != nil {
 		return err
@@ -209,7 +233,7 @@ func (sb *Shoebox) ArchiveItemObjectImages(root string, item []byte, object []by
 
 			_, err := os.Stat(local)
 
-			if os.IsExist(err) {
+			if err == nil {
 				log.Printf("skip %s\n", remote)
 				continue
 			}
@@ -220,8 +244,14 @@ func (sb *Shoebox) ArchiveItemObjectImages(root string, item []byte, object []by
 
 				defer wg.Done()
 
-				util.GetStore(remote, local)
-				log.Println("write", local)				
+				err := util.GetStore(remote, local)
+
+				if err != nil {
+					log.Printf("failed to retrieve %s, because %s\n", remote, err)
+					return
+				}
+
+				log.Println("write", local)
 
 			}(remote, local, wg)
 

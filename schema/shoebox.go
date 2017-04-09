@@ -1,5 +1,7 @@
 package schema
 
+// EXPERIMENTAL
+
 import (
        "strconv"
 )

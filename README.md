@@ -31,8 +31,6 @@ func main() {
 	ep, _ := endpoint.NewOAuth2APIEndpoint(tk)
 	cl, _ := client.NewHTTPClient(ep)
 
-	method := "cooperhewitt.shoebox.items.getList"
-
 	cb := func(rsp api.APIResponse) error {
 
 		items := gjson.GetBytes(rsp.Raw(), "items")
@@ -48,6 +46,7 @@ func main() {
 		return nil
 	}
 
+	method := "cooperhewitt.shoebox.items.getList"
 	args := url.Values{}
 
 	cl.ExecuteMethodPaginated(method, &args, cb)

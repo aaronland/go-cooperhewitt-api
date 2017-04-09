@@ -60,5 +60,10 @@ func main() {
 
 ```
 ./bin/ch-api -param access_token=TOKEN -param method=cooperhewitt.labs.whatWouldMicahSay
-{"micah":{"says":"And I say: You know... we work in a museum... and we're closed!"},"stat":"ok"}
+{
+  "micah": {
+    "says": "Can you direct me to the shuffle board deck?"
+  }, 
+  "stat": "ok"
+}
 ```

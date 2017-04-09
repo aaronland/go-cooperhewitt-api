@@ -234,7 +234,7 @@ func (sb *Shoebox) ArchiveItemObjectImages(root string, item []byte, object []by
 			_, err := os.Stat(local)
 
 			if err == nil {
-				log.Printf("skip %s\n", remote)
+				// log.Printf("skip %s\n", remote)
 				continue
 			}
 

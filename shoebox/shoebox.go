@@ -77,6 +77,10 @@ func (sb *Shoebox) Archive(dest string) error {
 
 				throttle <- true
 
+				// See notes below about doing all of this post
+				// API call wrangling and by reading the resultant
+				// JSON files (20170410/thisisaaronland)
+
 				item_id := gjson.GetBytes(item, "id").Int()
 				title := gjson.GetBytes(item, "title").String()
 
@@ -112,7 +116,11 @@ func (sb *Shoebox) Archive(dest string) error {
 		return err
 	}
 
-	n := "debug"
+	// TO CONSIDER: Doing all of this after the API has been
+	// called and looping over `root` and parsing the JSON files
+	// on disk, in separate functions (20170410/thisisaaronland)
+
+	n := "index"
 	t, err := template.NewShoeboxIndex(n)
 
 	if err != nil {
@@ -158,7 +166,13 @@ func (sb *Shoebox) ArchiveItem(root string, item []byte) error {
 		return err
 	}
 
-	err = sb.ArchiveItemObject(root, item)
+	object, err := sb.GetItemObject(item)
+
+	if err != nil {
+		return err
+	}
+
+	err = sb.ArchiveItemObject(root, item, object)
 
 	if err != nil {
 		return err
@@ -197,7 +211,7 @@ func (sb *Shoebox) ArchiveItemMetadata(root string, item []byte) error {
 	return nil
 }
 
-func (sb *Shoebox) ArchiveItemObject(root string, item []byte) error {
+func (sb *Shoebox) GetItemObject(item []byte) ([]byte, error) {
 
 	object_id := gjson.GetBytes(item, "refers_to_uid").Int()
 
@@ -210,10 +224,15 @@ func (sb *Shoebox) ArchiveItemObject(root string, item []byte) error {
 	rsp, err := sb.client.ExecuteMethod(method, &args)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	object := rsp.Raw()
+	return rsp.Raw(), nil
+}
+
+func (sb *Shoebox) ArchiveItemObject(root string, item []byte, object []byte) error {
+
+	var err error
 
 	err = sb.ArchiveItemObjectMetadata(root, item, object)
 

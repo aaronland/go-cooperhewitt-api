@@ -9,19 +9,19 @@ type ShoeboxIndex struct {
 }
 
 type ShoeboxItem struct {
-     Objects ShoeboxObject
+	Objects ShoeboxObject
 }
 
 type ShoeboxObject struct {
-     Title string
-     URL string
-     Images ShoeboxObjectImages
+	Title  string
+	URL    string
+	Images ShoeboxObjectImages
 }
 
 type ShoeboxObjectImages map[string]ShoeboxObjectImage
 
 type ShoeboxObjectImage struct {
-     URL string
+	URL string
 }
 
 type ShoeboxLink struct {

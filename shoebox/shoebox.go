@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/thisisaaronland/go-cooperhewitt-api"
+	"github.com/thisisaaronland/go-cooperhewitt-api/template"
 	"github.com/thisisaaronland/go-cooperhewitt-api/util"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/pretty"
@@ -14,7 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
-	"time"
+	_ "time"
 )
 
 type Shoebox struct {
@@ -49,6 +50,9 @@ func (sb *Shoebox) Archive(dest string) error {
 		throttle <- true
 	}
 
+	shoebox_links := make([]template.ShoeboxLink, 0)
+	mu := new(sync.Mutex)
+
 	method := "cooperhewitt.shoebox.items.getList"
 
 	cb := func(rsp api.APIResponse) error {
@@ -72,6 +76,24 @@ func (sb *Shoebox) Archive(dest string) error {
 				}
 
 				throttle <- true
+
+				item_id := gjson.GetBytes(item, "id").Int()
+				title := gjson.GetBytes(item, "title").String()
+
+				path := util.Id2Path(item_id)
+				fname := "index.html"
+
+				url := filepath.Join(path, fname)
+
+				link := template.ShoeboxLink{
+					Title: title,
+					URL:   url,
+				}
+
+				mu.Lock()
+				shoebox_links = append(shoebox_links, link)
+				mu.Unlock()
+
 				wg.Done()
 
 			}(item, wg, throttle)
@@ -85,6 +107,23 @@ func (sb *Shoebox) Archive(dest string) error {
 	args := url.Values{}
 
 	err = sb.client.ExecuteMethodPaginated(method, &args, cb)
+
+	if err != nil {
+		return err
+	}
+
+	n := "debug"
+	t, err := template.NewShoeboxIndex(n)
+
+	if err != nil {
+		return err
+	}
+
+	data := template.ShoeboxIndex{
+		Links: shoebox_links,
+	}
+
+	err = t.ExecuteTemplate(os.Stdout, n, data)
 
 	if err != nil {
 		return err
@@ -141,8 +180,14 @@ func (sb *Shoebox) ArchiveItemMetadata(root string, item []byte) error {
 	rel_path := filepath.Join(path, fname)
 	abs_path := filepath.Join(root, rel_path)
 
+	_, err := os.Stat(abs_path)
+
+	if err == nil {
+		return nil
+	}
+
 	item_fmt := pretty.Pretty(item)
-	err := ioutil.WriteFile(abs_path, item_fmt, 0644)
+	err = ioutil.WriteFile(abs_path, item_fmt, 0644)
 
 	if err != nil {
 		return err
@@ -196,8 +241,14 @@ func (sb *Shoebox) ArchiveItemObjectMetadata(root string, item []byte, object []
 	rel_path := filepath.Join(path, fname)
 	abs_path := filepath.Join(root, rel_path)
 
+	_, err := os.Stat(abs_path)
+
+	if err == nil {
+		return nil
+	}
+
 	object_fmt := pretty.Pretty(object)
-	err := ioutil.WriteFile(abs_path, object_fmt, 0644)
+	err = ioutil.WriteFile(abs_path, object_fmt, 0644)
 
 	if err != nil {
 		return err
@@ -216,7 +267,7 @@ func (sb *Shoebox) ArchiveItemObjectImages(root string, item []byte, object []by
 
 	images := gjson.GetBytes(object, "object.images")
 
-	t1 := time.Now()
+	// t1 := time.Now()
 
 	wg := new(sync.WaitGroup)
 
@@ -260,8 +311,8 @@ func (sb *Shoebox) ArchiveItemObjectImages(root string, item []byte, object []by
 
 	wg.Wait()
 
-	t2 := time.Since(t1)
+	// t2 := time.Since(t1)
+	// log.Printf("time to get images for %d : %v\n", item_id, t2)
 
-	log.Printf("time to get images for %d : %v\n", item_id, t2)
 	return nil
 }

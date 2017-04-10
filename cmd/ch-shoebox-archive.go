@@ -2,11 +2,13 @@ package main
 
 import (
 	"flag"
+	"github.com/briandowns/spinner"
 	"github.com/thisisaaronland/go-cooperhewitt-api/client"
 	"github.com/thisisaaronland/go-cooperhewitt-api/endpoint"
 	"github.com/thisisaaronland/go-cooperhewitt-api/shoebox"
 	"log"
 	"os"
+	"time"
 )
 
 func main() {
@@ -34,11 +36,31 @@ func main() {
 		log.Fatal(err)
 	}
 
+	done := make(chan bool)
+
+	go func() {
+
+		sp := spinner.New(spinner.CharSets[38], 200*time.Millisecond)
+		sp.Prefix = "archiving shoebox..."
+		sp.Start()
+
+		for {
+
+			select {
+			case <-done:
+				sp.Stop()
+				return
+			}
+		}
+	}()
+
 	err = sb.Archive(*dest)
 
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	done <- true
 
 	os.Exit(0)
 }

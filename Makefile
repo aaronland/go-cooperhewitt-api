@@ -16,6 +16,8 @@ self:   prep
 	cp response/*.go src/github.com/thisisaaronland/go-cooperhewitt-api/response/
 	mkdir -p src/github.com/thisisaaronland/go-cooperhewitt-api/shoebox
 	cp shoebox/*.go src/github.com/thisisaaronland/go-cooperhewitt-api/shoebox/
+	mkdir -p src/github.com/thisisaaronland/go-cooperhewitt-api/template
+	cp template/*.go src/github.com/thisisaaronland/go-cooperhewitt-api/template/
 	mkdir -p src/github.com/thisisaaronland/go-cooperhewitt-api/util
 	cp util/*.go src/github.com/thisisaaronland/go-cooperhewitt-api/util/
 	cp api.go src/github.com/thisisaaronland/go-cooperhewitt-api/
@@ -25,7 +27,8 @@ self:   prep
 rmdeps:
 	if test -d src; then rm -rf src; fi 
 
-deps:   
+deps:
+	@GOPATH=$(GOPATH) go get -u "github.com/briandowns/spinner"
 	@GOPATH=$(GOPATH) go get -u "github.com/tidwall/gjson"
 	@GOPATH=$(GOPATH) go get -u "github.com/tidwall/pretty"
 
@@ -43,6 +46,7 @@ fmt:
 	go fmt endpoint/*.go
 	go fmt response/*.go
 	go fmt shoebox/*.go
+	go fmt template/*.go
 	go fmt util/*.go
 
 bin:	self

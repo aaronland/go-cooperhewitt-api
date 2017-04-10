@@ -6,7 +6,7 @@ import (
 	"github.com/thisisaaronland/go-cooperhewitt-api"
 	"github.com/thisisaaronland/go-cooperhewitt-api/client"
 	"github.com/thisisaaronland/go-cooperhewitt-api/endpoint"
-	"github.com/tidwall/pretty"	
+	"github.com/tidwall/pretty"
 	"log"
 	"os"
 )
@@ -58,7 +58,7 @@ func main() {
 
 		out := pretty.Pretty(rsp.Raw())
 		_, err = dest.Write(out)
-		
+
 		return err
 	}
 

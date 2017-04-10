@@ -166,6 +166,9 @@ func (sb *Shoebox) ArchiveItem(root string, item []byte) error {
 		return err
 	}
 
+	// TODO : check for video and other things...
+	// (20170410/thisisaaronland)
+	
 	object, err := sb.GetItemObject(item)
 
 	if err != nil {

@@ -174,8 +174,9 @@ func TestBasic(t *testing.T) {
 	if mtok.String() != `["Brett","Elliotte"]` {
 		t.Fatalf("expected %v, got %v", `["Brett","Elliotte"]`, mtok.String())
 	}
-
-	mtok = get(basicJSON, `loggy.programmers`)
+}
+func TestBasic1(t *testing.T) {
+	mtok := get(basicJSON, `loggy.programmers`)
 	var count int
 	mtok.ForEach(func(key, value Result) bool {
 		if key.Exists() {
@@ -211,7 +212,9 @@ func TestBasic(t *testing.T) {
 	if count != 3 {
 		t.Fatalf("expected %v, got %v", 3, count)
 	}
-	mtok = get(basicJSON, `loggy.programmers.#[age=101].firstName`)
+}
+func TestBasic2(t *testing.T) {
+	mtok := get(basicJSON, `loggy.programmers.#[age=101].firstName`)
 	if mtok.String() != "1002.3" {
 		t.Fatalf("expected %v, got %v", "1002.3", mtok.String())
 	}
@@ -238,25 +241,27 @@ func TestBasic(t *testing.T) {
 	if programmers.Array()[1].Map()["firstName"].Str != "Jason" {
 		t.Fatalf("expected %v, got %v", "Jason", mtok.Map()["programmers"].Array()[1].Map()["firstName"].Str)
 	}
-
+}
+func TestBasic3(t *testing.T) {
+	var mtok Result
 	if Parse(basicJSON).Get("loggy.programmers").Get("1").Get("firstName").Str != "Jason" {
 		t.Fatalf("expected %v, got %v", "Jason", Parse(basicJSON).Get("loggy.programmers").Get("1").Get("firstName").Str)
 	}
 	var token Result
 	if token = Parse("-102"); token.Num != -102 {
-		t.Fatal("expected %v, got %v", -102, token.Num)
+		t.Fatalf("expected %v, got %v", -102, token.Num)
 	}
 	if token = Parse("102"); token.Num != 102 {
-		t.Fatal("expected %v, got %v", 102, token.Num)
+		t.Fatalf("expected %v, got %v", 102, token.Num)
 	}
 	if token = Parse("102.2"); token.Num != 102.2 {
-		t.Fatal("expected %v, got %v", 102.2, token.Num)
+		t.Fatalf("expected %v, got %v", 102.2, token.Num)
 	}
 	if token = Parse(`"hello"`); token.Str != "hello" {
-		t.Fatal("expected %v, got %v", "hello", token.Str)
+		t.Fatalf("expected %v, got %v", "hello", token.Str)
 	}
 	if token = Parse(`"\"he\nllo\""`); token.Str != "\"he\nllo\"" {
-		t.Fatal("expected %v, got %v", "\"he\nllo\"", token.Str)
+		t.Fatalf("expected %v, got %v", "\"he\nllo\"", token.Str)
 	}
 	mtok = get(basicJSON, "loggy.programmers.#.firstName")
 	if len(mtok.Array()) != 4 {
@@ -269,12 +274,13 @@ func TestBasic(t *testing.T) {
 	}
 	mtok = get(basicJSON, "loggy.programmers.#.asd")
 	if mtok.Type != JSON {
-		t.Fatal("expected %v, got %v", JSON, mtok.Type)
+		t.Fatalf("expected %v, got %v", JSON, mtok.Type)
 	}
 	if len(mtok.Array()) != 0 {
 		t.Fatalf("expected 0, got %v", len(mtok.Array()))
 	}
-
+}
+func TestBasic4(t *testing.T) {
 	if get(basicJSON, "items.3.tags.#").Num != 3 {
 		t.Fatalf("expected 3, got %v", get(basicJSON, "items.3.tags.#").Num)
 	}
@@ -290,7 +296,7 @@ func TestBasic(t *testing.T) {
 	if !get(basicJSON, "name.last").Exists() {
 		t.Fatal("expected true, got false")
 	}
-	token = get(basicJSON, "name.here")
+	token := get(basicJSON, "name.here")
 	if token.String() != "B\\\"R" {
 		t.Fatal("expecting 'B\\\"R'", "got", token.String())
 	}
@@ -315,7 +321,9 @@ func TestBasic(t *testing.T) {
 	if token.Value() != nil {
 		t.Fatal("should be nil")
 	}
-	token = get(basicJSON, "age")
+}
+func TestBasic5(t *testing.T) {
+	token := get(basicJSON, "age")
 	if token.String() != "100" {
 		t.Fatal("expecting '100'", "got", token.String())
 	}
@@ -518,17 +526,17 @@ func TestSingleArrayValue(t *testing.T) {
 		t.Fatal("array is empty")
 	}
 	if array[0].String() != "value" {
-		t.Fatal("got %s, should be %s", array[0].String(), "value")
+		t.Fatalf("got %s, should be %s", array[0].String(), "value")
 	}
 
 	array = Get(json, "key2.#").Array()
 	if len(array) != 1 {
-		t.Fatal("got '%v', expected '%v'", len(array), 1)
+		t.Fatalf("got '%v', expected '%v'", len(array), 1)
 	}
 
 	array = Get(json, "key3").Array()
 	if len(array) != 0 {
-		t.Fatal("got '%v', expected '%v'", len(array), 0)
+		t.Fatalf("got '%v', expected '%v'", len(array), 0)
 	}
 
 }
@@ -570,10 +578,9 @@ func TestManyBasic(t *testing.T) {
 		if fmt.Sprintf("%v", results) != expect {
 			t.Fatalf("expected %v, got %v", expect, results)
 		}
-		return
-		if testLastWasFallback != shouldFallback {
-			t.Fatalf("expected %v, got %v", shouldFallback, testLastWasFallback)
-		}
+		//if testLastWasFallback != shouldFallback {
+		//	t.Fatalf("expected %v, got %v", shouldFallback, testLastWasFallback)
+		//}
 	}
 	testMany(false, "[Point]", "position.type")
 	testMany(false, `[emptya ["world peace"] 31]`, ".a", "loves", "age")
@@ -723,12 +730,6 @@ func BenchmarkGJSONGetMany64Paths(t *testing.B) {
 }
 func BenchmarkGJSONGetMany128Paths(t *testing.B) {
 	benchmarkGJSONGetManyN(t, 128)
-}
-func BenchmarkGJSONGetMany256Paths(t *testing.B) {
-	benchmarkGJSONGetManyN(t, 256)
-}
-func BenchmarkGJSONGetMany512Paths(t *testing.B) {
-	benchmarkGJSONGetManyN(t, 512)
 }
 func benchmarkGJSONGetManyN(t *testing.B, n int) {
 	var paths []string
@@ -929,22 +930,85 @@ func BenchmarkFFJSONLexer(t *testing.B) {
 	t.N *= len(benchPaths) // because we are running against 3 paths
 }
 
-func BenchmarkEasyJSONLexer(t *testing.B) {
-	skipCC := func(l *jlexer.Lexer, n int) {
-		for i := 0; i < n; i++ {
-			l.Skip()
-			l.WantColon()
-			l.Skip()
-			l.WantComma()
-		}
-	}
-	skipGroup := func(l *jlexer.Lexer, n int) {
+func skipCC(l *jlexer.Lexer, n int) {
+	for i := 0; i < n; i++ {
+		l.Skip()
 		l.WantColon()
-		l.Delim('{')
-		skipCC(l, n)
-		l.Delim('}')
+		l.Skip()
 		l.WantComma()
 	}
+}
+func skipGroup(l *jlexer.Lexer, n int) {
+	l.WantColon()
+	l.Delim('{')
+	skipCC(l, n)
+	l.Delim('}')
+	l.WantComma()
+}
+func easyJSONWindowName(t *testing.B, l *jlexer.Lexer) {
+	if l.String() == "window" {
+		l.WantColon()
+		l.Delim('{')
+		skipCC(l, 1)
+		if l.String() == "name" {
+			l.WantColon()
+			if l.String() == "" {
+				t.Fatal("did not find the value")
+			}
+		}
+	}
+}
+func easyJSONImageHOffset(t *testing.B, l *jlexer.Lexer) {
+	if l.String() == "image" {
+		l.WantColon()
+		l.Delim('{')
+		skipCC(l, 1)
+		if l.String() == "hOffset" {
+			l.WantColon()
+			if l.Int() == 0 {
+				t.Fatal("did not find the value")
+			}
+		}
+	}
+}
+func easyJSONTextOnMouseUp(t *testing.B, l *jlexer.Lexer) {
+	if l.String() == "text" {
+		l.WantColon()
+		l.Delim('{')
+		skipCC(l, 5)
+		if l.String() == "onMouseUp" {
+			l.WantColon()
+			if l.String() == "" {
+				t.Fatal("did not find the value")
+			}
+		}
+	}
+}
+func easyJSONWidget(t *testing.B, l *jlexer.Lexer, j int) {
+	l.WantColon()
+	l.Delim('{')
+	switch benchPaths[j] {
+	case "widget.window.name":
+		skipCC(l, 1)
+		easyJSONWindowName(t, l)
+	case "widget.image.hOffset":
+		skipCC(l, 1)
+		if l.String() == "window" {
+			skipGroup(l, 4)
+		}
+		easyJSONImageHOffset(t, l)
+	case "widget.text.onMouseUp":
+		skipCC(l, 1)
+		if l.String() == "window" {
+			skipGroup(l, 4)
+		}
+		if l.String() == "image" {
+			skipGroup(l, 4)
+		}
+		easyJSONTextOnMouseUp(t, l)
+	}
+}
+func BenchmarkEasyJSONLexer(t *testing.B) {
 	t.ReportAllocs()
 	t.ResetTimer()
 	for i := 0; i < t.N; i++ {
@@ -952,58 +1016,7 @@ func BenchmarkEasyJSONLexer(t *testing.B) {
 			l := &jlexer.Lexer{Data: []byte(exampleJSON)}
 			l.Delim('{')
 			if l.String() == "widget" {
-				l.WantColon()
-				l.Delim('{')
-				switch benchPaths[j] {
-				case "widget.window.name":
-					skipCC(l, 1)
-					if l.String() == "window" {
-						l.WantColon()
-						l.Delim('{')
-						skipCC(l, 1)
-						if l.String() == "name" {
-							l.WantColon()
-							if l.String() == "" {
-								t.Fatal("did not find the value")
-							}
-						}
-					}
-				case "widget.image.hOffset":
-					skipCC(l, 1)
-					if l.String() == "window" {
-						skipGroup(l, 4)
-					}
-					if l.String() == "image" {
-						l.WantColon()
-						l.Delim('{')
-						skipCC(l, 1)
-						if l.String() == "hOffset" {
-							l.WantColon()
-							if l.Int() == 0 {
-								t.Fatal("did not find the value")
-							}
-						}
-					}
-				case "widget.text.onMouseUp":
-					skipCC(l, 1)
-					if l.String() == "window" {
-						skipGroup(l, 4)
-					}
-					if l.String() == "image" {
-						skipGroup(l, 4)
-					}
-					if l.String() == "text" {
-						l.WantColon()
-						l.Delim('{')
-						skipCC(l, 5)
-						if l.String() == "onMouseUp" {
-							l.WantColon()
-							if l.String() == "" {
-								t.Fatal("did not find the value")
-							}
-						}
-					}
-				}
+				easyJSONWidget(t, l, j)
 			}
 		}
 	}

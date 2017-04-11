@@ -31,9 +31,9 @@ func NewShoebox(client api.APIClient) (*Shoebox, error) {
 	return &sb, nil
 }
 
-func (sb *Shoebox) Archive(dest string) error {
+func (sb *Shoebox) Archive(root_path string) error {
 
-	info, err := os.Stat(dest)
+	info, err := os.Stat(root_path)
 
 	if os.IsNotExist(err) {
 		return err
@@ -69,7 +69,7 @@ func (sb *Shoebox) Archive(dest string) error {
 
 			go func(item []byte, wg *sync.WaitGroup, throttle chan bool) {
 
-				err := sb.ArchiveItem(dest, item)
+				err := sb.ArchiveItem(root_path, item)
 
 				if err != nil {
 					log.Println(err)
@@ -120,6 +120,17 @@ func (sb *Shoebox) Archive(dest string) error {
 	// called and looping over `root` and parsing the JSON files
 	// on disk, in separate functions (20170410/thisisaaronland)
 
+	fname := "index.html"
+	abs_path := filepath.Join(root_path, fname)
+
+	fh, err := os.Create(abs_path)
+
+	if err != nil {
+		return err
+	}
+
+	defer fh.Close()
+
 	n := "index"
 	t, err := template.NewShoeboxIndex(n)
 
@@ -127,11 +138,11 @@ func (sb *Shoebox) Archive(dest string) error {
 		return err
 	}
 
-	data := template.ShoeboxIndex{
+	sb_data := template.ShoeboxIndex{
 		Links: shoebox_links,
 	}
 
-	err = t.ExecuteTemplate(os.Stdout, n, data)
+	err = t.ExecuteTemplate(fh, n, sb_data)
 
 	if err != nil {
 		return err
@@ -168,21 +179,70 @@ func (sb *Shoebox) ArchiveItem(root string, item []byte) error {
 
 	// TODO : check for video and other things...
 	// (20170410/thisisaaronland)
-	
-	object, err := sb.GetItemObject(item)
 
-	if err != nil {
-		return err
-	}
+	var object []byte
 
-	err = sb.ArchiveItemObject(root, item, object)
+	refers_to := gjson.GetBytes(item, "refers_to_a").String()
 
-	if err != nil {
-		return err
+	switch refers_to {
+
+	case "object":
+
+		object, err = sb.GetItemObject(item)
+
+		if err != nil {
+			return err
+		}
+
+		err = sb.ArchiveItemObject(root, item, object)
+
+		if err != nil {
+			return err
+		}
+
+	default:
+		log.Printf("TO DO: implement archiving of %s thingies\n", refers_to)
 	}
 
 	// TO DO
 	// generate HTML
+
+	fname := "index.html"
+	abs_path := filepath.Join(root_path, fname)
+
+	fh, err := os.Create(abs_path)
+
+	if err != nil {
+		return err
+	}
+
+	defer fh.Close()
+
+	n := "item"
+	t, err := template.NewShoeboxItem(n)
+
+	if err != nil {
+		return err
+	}
+
+	obj_title := gjson.GetBytes(object, "object.title").String()
+	obj_url := gjson.GetBytes(object, "object.url").String()
+
+	sb_object := template.ShoeboxObject{
+		Title: obj_title,
+		URL:   obj_url,
+	}
+
+	sb_data := template.ShoeboxItem{
+		Title:  obj_title,
+		Object: sb_object,
+	}
+
+	err = t.ExecuteTemplate(fh, n, sb_data)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

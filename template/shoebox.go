@@ -9,13 +9,14 @@ type ShoeboxIndex struct {
 }
 
 type ShoeboxItem struct {
-	Objects ShoeboxObject
+	Title  string
+	Object ShoeboxObject
 }
 
 type ShoeboxObject struct {
-	Title  string
-	URL    string
-	Images ShoeboxObjectImages
+	Title string
+	URL   string
+	// Images ShoeboxObjectImages
 }
 
 type ShoeboxObjectImages map[string]ShoeboxObjectImage
@@ -54,11 +55,12 @@ func NewShoeboxItem(name string) (*gotemplate.Template, error) {
 	return gotemplate.New(name).Parse(`
 <html>
      <head>
-	<title>...</title>
+	<title>{{.Title}}</title>
      </head>
      <body>
 	<img src="" height="" width="" alt="" />
-	<a href="">...</a>
+	<h3>{{.Object.Title}}</h3>
+	<a href="{{.Object.URL}}">{{.Object.URL}}</a>
      </body>
 </html>`)
 

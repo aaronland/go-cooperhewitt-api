@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 )
 
-type ShoeboxRenderItem struct {
+type ShoeboxIndexItem struct {
 	Id    int64
 	Title string
 }
@@ -39,7 +39,7 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 		return errors.New("Not a directory")
 	}
 
-	// item_ids := []*ShoeboxRenderItem
+	index_items := make([]*ShoeboxIndexItem, 0)
 
 	callback := func(abs_path string, info os.FileInfo) error {
 
@@ -67,11 +67,13 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 			return err
 		}
 
-		err = sb.RenderItem(root_path, item)
+		i, err := sb.RenderItem(root_path, item)
 
 		if err != nil {
 			return err
 		}
+
+		index_items = append(index_items, i)
 
 		return nil
 	}
@@ -87,9 +89,10 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 	return nil
 }
 
-func (sb *ShoeboxRenderer) RenderItem(root_path string, item []byte) error {
+func (sb *ShoeboxRenderer) RenderItem(root_path string, item []byte) (*ShoeboxIndexItem, error) {
 
 	item_id := gjson.GetBytes(item, "id").Int()
+	item_title := gjson.GetBytes(item, "title").String()
 
 	path := util.Id2Path(item_id)
 	rel_path := filepath.Join(root_path, path)
@@ -100,5 +103,11 @@ func (sb *ShoeboxRenderer) RenderItem(root_path string, item []byte) error {
 	refersto_path := filepath.Join(rel_path, refersto_fname)
 
 	log.Println(refersto_path)
-	return nil
+
+	i := ShoeboxIndexItem{
+		Id:    item_id,
+		Title: item_title,
+	}
+
+	return &i, nil
 }

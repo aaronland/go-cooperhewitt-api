@@ -2,6 +2,8 @@ package shoebox
 
 import (
 	"errors"
+	"fmt"
+	"github.com/thisisaaronland/go-cooperhewitt-api/util"
 	"github.com/tidwall/gjson"
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"io/ioutil"
@@ -45,9 +47,9 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 			return nil
 		}
 
-		ext := filepath.Ext(abs_path)
+		fname := filepath.Base(abs_path)
 
-		if ext != ".json" {
+		if fname != "info.json" {
 			return nil
 		}
 
@@ -59,13 +61,18 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 
 		defer fh.Close()
 
-		body, err := ioutil.ReadAll(fh)
+		item, err := ioutil.ReadAll(fh)
 
 		if err != nil {
 			return err
 		}
 
-		log.Println(gjson.GetBytes(body, "id"))
+		err = sb.RenderItem(root_path, item)
+
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}
 
@@ -77,5 +84,21 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (sb *ShoeboxRenderer) RenderItem(root_path string, item []byte) error {
+
+	item_id := gjson.GetBytes(item, "id").Int()
+
+	path := util.Id2Path(item_id)
+	rel_path := filepath.Join(root_path, path)
+
+	refersto_id := gjson.GetBytes(item, "refers_to_uid").Int()
+
+	refersto_fname := fmt.Sprintf("%d.json", refersto_id)
+	refersto_path := filepath.Join(rel_path, refersto_fname)
+
+	log.Println(refersto_path)
 	return nil
 }

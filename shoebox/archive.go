@@ -252,7 +252,7 @@ func (sb *Shoebox) ArchiveItemMetadata(root string, item []byte) error {
 	id := gjson.GetBytes(item, "id").Int()
 	path := util.Id2Path(id)
 
-	fname := fmt.Sprintf("%d.json", id)
+	fname := "%index.json"
 
 	rel_path := filepath.Join(path, fname)
 	abs_path := filepath.Join(root, rel_path)

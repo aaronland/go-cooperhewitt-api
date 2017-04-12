@@ -5,7 +5,13 @@ import (
 )
 
 type ShoeboxIndex struct {
-	Links []ShoeboxLink
+	Items []*ShoeboxIndexItem
+}
+
+type ShoeboxIndexItem struct {
+	Id    int64
+	URL   string
+	Title string
 }
 
 type ShoeboxItem struct {
@@ -40,7 +46,7 @@ func NewShoeboxIndex(name string) (*gotemplate.Template, error) {
      <body>
 
 	<ul>
-	{{- range .Links}}
+	{{- range .Items}}
 	    <li><a href="{{.URL}}">{{.Title}}</a></li>
 	{{- end}}
 	</ul>

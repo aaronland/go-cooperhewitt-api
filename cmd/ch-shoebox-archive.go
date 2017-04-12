@@ -30,7 +30,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sb, err := shoebox.NewShoebox(c)
+	sb, err := shoebox.NewShoeboxArchiver(c)
 
 	if err != nil {
 		log.Fatal(err)

@@ -53,3 +53,4 @@ fmt:
 bin:	self
 	@GOPATH=$(shell pwd) go build -o bin/ch-api cmd/ch-api.go
 	@GOPATH=$(shell pwd) go build -o bin/ch-shoebox-archive cmd/ch-shoebox-archive.go
+	@GOPATH=$(shell pwd) go build -o bin/ch-shoebox-render cmd/ch-shoebox-render.go

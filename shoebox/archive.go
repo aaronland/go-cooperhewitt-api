@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/thisisaaronland/go-cooperhewitt-api"
-	"github.com/thisisaaronland/go-cooperhewitt-api/template"
 	"github.com/thisisaaronland/go-cooperhewitt-api/util"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/pretty"
@@ -18,20 +17,20 @@ import (
 	_ "time"
 )
 
-type Shoebox struct {
+type ShoeboxArchiver struct {
 	client api.APIClient
 }
 
-func NewShoebox(client api.APIClient) (*Shoebox, error) {
+func NewShoeboxArchiver(client api.APIClient) (*ShoeboxArchiver, error) {
 
-	sb := Shoebox{
+	sb := ShoeboxArchiver{
 		client: client,
 	}
 
 	return &sb, nil
 }
 
-func (sb *Shoebox) Archive(root_path string) error {
+func (sb *ShoeboxArchiver) Archive(root_path string) error {
 
 	info, err := os.Stat(root_path)
 
@@ -49,9 +48,6 @@ func (sb *Shoebox) Archive(root_path string) error {
 	for i := 0; i < max; i++ {
 		throttle <- true
 	}
-
-	shoebox_links := make([]template.ShoeboxLink, 0)
-	mu := new(sync.Mutex)
 
 	method := "cooperhewitt.shoebox.items.getList"
 
@@ -77,27 +73,6 @@ func (sb *Shoebox) Archive(root_path string) error {
 
 				throttle <- true
 
-				// See notes below about doing all of this post
-				// API call wrangling and by reading the resultant
-				// JSON files (20170410/thisisaaronland)
-
-				item_id := gjson.GetBytes(item, "id").Int()
-				title := gjson.GetBytes(item, "title").String()
-
-				path := util.Id2Path(item_id)
-				fname := "index.html"
-
-				url := filepath.Join(path, fname)
-
-				link := template.ShoeboxLink{
-					Title: title,
-					URL:   url,
-				}
-
-				mu.Lock()
-				shoebox_links = append(shoebox_links, link)
-				mu.Unlock()
-
 				wg.Done()
 
 			}(item, wg, throttle)
@@ -116,42 +91,10 @@ func (sb *Shoebox) Archive(root_path string) error {
 		return err
 	}
 
-	// TO CONSIDER: Doing all of this after the API has been
-	// called and looping over `root` and parsing the JSON files
-	// on disk, in separate functions (20170410/thisisaaronland)
-
-	fname := "index.html"
-	abs_path := filepath.Join(root_path, fname)
-
-	fh, err := os.Create(abs_path)
-
-	if err != nil {
-		return err
-	}
-
-	defer fh.Close()
-
-	n := "index"
-	t, err := template.NewShoeboxIndex(n)
-
-	if err != nil {
-		return err
-	}
-
-	sb_data := template.ShoeboxIndex{
-		Links: shoebox_links,
-	}
-
-	err = t.ExecuteTemplate(fh, n, sb_data)
-
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (sb *Shoebox) ArchiveItem(root string, item []byte) error {
+func (sb *ShoeboxArchiver) ArchiveItem(root string, item []byte) error {
 
 	var err error
 
@@ -207,52 +150,15 @@ func (sb *Shoebox) ArchiveItem(root string, item []byte) error {
 	// TO DO
 	// generate HTML
 
-	fname := "index.html"
-	abs_path := filepath.Join(root_path, fname)
-
-	fh, err := os.Create(abs_path)
-
-	if err != nil {
-		return err
-	}
-
-	defer fh.Close()
-
-	n := "item"
-	t, err := template.NewShoeboxItem(n)
-
-	if err != nil {
-		return err
-	}
-
-	obj_title := gjson.GetBytes(object, "object.title").String()
-	obj_url := gjson.GetBytes(object, "object.url").String()
-
-	sb_object := template.ShoeboxObject{
-		Title: obj_title,
-		URL:   obj_url,
-	}
-
-	sb_data := template.ShoeboxItem{
-		Title:  obj_title,
-		Object: sb_object,
-	}
-
-	err = t.ExecuteTemplate(fh, n, sb_data)
-
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func (sb *Shoebox) ArchiveItemMetadata(root string, item []byte) error {
+func (sb *ShoeboxArchiver) ArchiveItemMetadata(root string, item []byte) error {
 
 	id := gjson.GetBytes(item, "id").Int()
 	path := util.Id2Path(id)
 
-	fname := "%index.json"
+	fname := "index.json"
 
 	rel_path := filepath.Join(path, fname)
 	abs_path := filepath.Join(root, rel_path)
@@ -274,7 +180,7 @@ func (sb *Shoebox) ArchiveItemMetadata(root string, item []byte) error {
 	return nil
 }
 
-func (sb *Shoebox) GetItemObject(item []byte) ([]byte, error) {
+func (sb *ShoeboxArchiver) GetItemObject(item []byte) ([]byte, error) {
 
 	object_id := gjson.GetBytes(item, "refers_to_uid").Int()
 
@@ -293,7 +199,7 @@ func (sb *Shoebox) GetItemObject(item []byte) ([]byte, error) {
 	return rsp.Raw(), nil
 }
 
-func (sb *Shoebox) ArchiveItemObject(root string, item []byte, object []byte) error {
+func (sb *ShoeboxArchiver) ArchiveItemObject(root string, item []byte, object []byte) error {
 
 	var err error
 
@@ -312,7 +218,7 @@ func (sb *Shoebox) ArchiveItemObject(root string, item []byte, object []byte) er
 	return nil
 }
 
-func (sb *Shoebox) ArchiveItemObjectMetadata(root string, item []byte, object []byte) error {
+func (sb *ShoeboxArchiver) ArchiveItemObjectMetadata(root string, item []byte, object []byte) error {
 
 	item_id := gjson.GetBytes(item, "id").Int()
 	object_id := gjson.GetBytes(item, "refers_to_uid").Int()
@@ -340,7 +246,7 @@ func (sb *Shoebox) ArchiveItemObjectMetadata(root string, item []byte, object []
 	return nil
 }
 
-func (sb *Shoebox) ArchiveItemObjectImages(root string, item []byte, object []byte) error {
+func (sb *ShoeboxArchiver) ArchiveItemObjectImages(root string, item []byte, object []byte) error {
 
 	item_id := gjson.GetBytes(item, "id").Int()
 	path := util.Id2Path(item_id)

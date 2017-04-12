@@ -3,19 +3,15 @@ package shoebox
 import (
 	"errors"
 	"fmt"
+	"github.com/thisisaaronland/go-cooperhewitt-api/template"
 	"github.com/thisisaaronland/go-cooperhewitt-api/util"
 	"github.com/tidwall/gjson"
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
+	"sync"
 )
-
-type ShoeboxIndexItem struct {
-	Id    int64
-	Title string
-}
 
 type ShoeboxRenderer struct {
 }
@@ -39,7 +35,9 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 		return errors.New("Not a directory")
 	}
 
-	index_items := make([]*ShoeboxIndexItem, 0)
+	index_items := make([]*template.ShoeboxIndexItem, 0)
+
+	mu := new(sync.Mutex)
 
 	callback := func(abs_path string, info os.FileInfo) error {
 
@@ -73,7 +71,9 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 			return err
 		}
 
+		mu.Lock()
 		index_items = append(index_items, i)
+		mu.Unlock()
 
 		return nil
 	}
@@ -86,10 +86,49 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 		return err
 	}
 
+	err = sb.RenderIndex(root_path, index_items)
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (sb *ShoeboxRenderer) RenderItem(root_path string, item []byte) (*ShoeboxIndexItem, error) {
+func (sb *ShoeboxRenderer) RenderIndex(root_path string, sb_items []*template.ShoeboxIndexItem) error {
+
+	fname := "index.html"
+	abs_path := filepath.Join(root_path, fname)
+
+	fh, err := os.Create(abs_path)
+
+	if err != nil {
+		return err
+	}
+
+	defer fh.Close()
+
+	n := "index"
+	t, err := template.NewShoeboxIndex(n)
+
+	if err != nil {
+		return err
+	}
+
+	sb_data := template.ShoeboxIndex{
+		Items: sb_items,
+	}
+
+	err = t.ExecuteTemplate(fh, n, sb_data)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (sb *ShoeboxRenderer) RenderItem(root_path string, item []byte) (*template.ShoeboxIndexItem, error) {
 
 	item_id := gjson.GetBytes(item, "id").Int()
 	item_title := gjson.GetBytes(item, "title").String()
@@ -102,10 +141,64 @@ func (sb *ShoeboxRenderer) RenderItem(root_path string, item []byte) (*ShoeboxIn
 	refersto_fname := fmt.Sprintf("%d.json", refersto_id)
 	refersto_path := filepath.Join(rel_path, refersto_fname)
 
-	log.Println(refersto_path)
+	// TO DO: handle things that are not objects...
 
-	i := ShoeboxIndexItem{
+	fh, err := os.Open(refersto_path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer fh.Close()
+
+	object, err := ioutil.ReadAll(fh)
+
+	if err != nil {
+		return nil, err
+	}
+
+	fname := "index.html"
+	abs_path := filepath.Join(rel_path, fname)
+
+	t_fh, err := os.Create(abs_path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer t_fh.Close()
+
+	n := "item"
+	t, err := template.NewShoeboxItem(n)
+
+	if err != nil {
+		return nil, err
+	}
+
+	obj_title := gjson.GetBytes(object, "object.title").String()
+	obj_url := gjson.GetBytes(object, "object.url").String()
+
+	sb_object := template.ShoeboxObject{
+		Title: obj_title,
+		URL:   obj_url,
+	}
+
+	sb_data := template.ShoeboxItem{
+		Title:  obj_title,
+		Object: sb_object,
+	}
+
+	err = t.ExecuteTemplate(t_fh, n, sb_data)
+
+	if err != nil {
+		return nil, err
+	}
+
+	item_url := filepath.Join(path, fname)
+
+	i := template.ShoeboxIndexItem{
 		Id:    item_id,
+		URL:   item_url,
 		Title: item_title,
 	}
 

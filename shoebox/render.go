@@ -8,6 +8,7 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -38,6 +39,7 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 	index_items := make([]*template.ShoeboxIndexItem, 0)
 
 	mu := new(sync.Mutex)
+	wg := new(sync.WaitGroup)
 
 	callback := func(abs_path string, info os.FileInfo) error {
 
@@ -47,9 +49,14 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 
 		fname := filepath.Base(abs_path)
 
-		if fname != "info.json" {
+		if fname != "index.json" {
 			return nil
 		}
+
+		// log.Println("archive", abs_path)
+
+		wg.Add(1)
+		defer wg.Done()
 
 		fh, err := os.Open(abs_path)
 
@@ -68,7 +75,10 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 		i, err := sb.RenderItem(root_path, item)
 
 		if err != nil {
-			return err
+			log.Println(fmt.Sprintf("failed to render %s, because %s", abs_path, err))
+			return nil
+
+			// return err
 		}
 
 		mu.Lock()
@@ -85,6 +95,8 @@ func (sb *ShoeboxRenderer) RenderArchive(root_path string) error {
 	if err != nil {
 		return err
 	}
+
+	wg.Wait()
 
 	err = sb.RenderIndex(root_path, index_items)
 
